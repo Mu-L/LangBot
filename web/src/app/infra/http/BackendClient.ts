@@ -33,6 +33,9 @@ import {
   ApiRespProviderEmbeddingModel,
   EmbeddingModel,
   ApiRespPluginSystemStatus,
+  ApiRespMCPServers,
+  ApiRespMCPServer,
+  MCPServer,
 } from '@/app/infra/entities/api';
 import { GetBotLogsRequest } from '@/app/infra/http/requestParam/bots/GetBotLogsRequest';
 import { GetBotLogsResponse } from '@/app/infra/http/requestParam/bots/GetBotLogsResponse';
@@ -451,9 +454,52 @@ export class BackendClient extends BaseHttpClient {
   }
 
   public installPluginFromGithub(
-    source: string,
+    assetUrl: string,
+    owner: string,
+    repo: string,
+    releaseTag: string,
   ): Promise<AsyncTaskCreatedResp> {
-    return this.post('/api/v1/plugins/install/github', { source });
+    return this.post('/api/v1/plugins/install/github', {
+      asset_url: assetUrl,
+      owner,
+      repo,
+      release_tag: releaseTag,
+    });
+  }
+
+  public getGithubReleases(repoUrl: string): Promise<{
+    releases: Array<{
+      id: number;
+      tag_name: string;
+      name: string;
+      published_at: string;
+      prerelease: boolean;
+      draft: boolean;
+    }>;
+    owner: string;
+    repo: string;
+  }> {
+    return this.post('/api/v1/plugins/github/releases', { repo_url: repoUrl });
+  }
+
+  public getGithubReleaseAssets(
+    owner: string,
+    repo: string,
+    releaseId: number,
+  ): Promise<{
+    assets: Array<{
+      id: number;
+      name: string;
+      size: number;
+      download_url: string;
+      content_type: string;
+    }>;
+  }> {
+    return this.post('/api/v1/plugins/github/release-assets', {
+      owner,
+      repo,
+      release_id: releaseId,
+    });
   }
 
   public installPluginFromLocal(file: File): Promise<AsyncTaskCreatedResp> {
@@ -489,6 +535,58 @@ export class BackendClient extends BaseHttpClient {
     name: string,
   ): Promise<AsyncTaskCreatedResp> {
     return this.post(`/api/v1/plugins/${author}/${name}/upgrade`);
+  }
+
+  // ============ MCP API ============
+  public getMCPServers(): Promise<ApiRespMCPServers> {
+    return this.get('/api/v1/mcp/servers');
+  }
+
+  public getMCPServer(serverName: string): Promise<ApiRespMCPServer> {
+    return this.get(`/api/v1/mcp/servers/${serverName}`);
+  }
+
+  public createMCPServer(server: MCPServer): Promise<AsyncTaskCreatedResp> {
+    return this.post('/api/v1/mcp/servers', server);
+  }
+
+  public updateMCPServer(
+    serverName: string,
+    server: Partial<MCPServer>,
+  ): Promise<AsyncTaskCreatedResp> {
+    return this.put(`/api/v1/mcp/servers/${serverName}`, server);
+  }
+
+  public deleteMCPServer(serverName: string): Promise<AsyncTaskCreatedResp> {
+    return this.delete(`/api/v1/mcp/servers/${serverName}`);
+  }
+
+  public toggleMCPServer(
+    serverName: string,
+    target_enabled: boolean,
+  ): Promise<AsyncTaskCreatedResp> {
+    return this.put(`/api/v1/mcp/servers/${serverName}`, {
+      enable: target_enabled,
+    });
+  }
+
+  public testMCPServer(
+    serverName: string,
+    serverData: object,
+  ): Promise<AsyncTaskCreatedResp> {
+    return this.post(`/api/v1/mcp/servers/${serverName}/test`, serverData);
+  }
+
+  public installMCPServerFromGithub(
+    source: string,
+  ): Promise<AsyncTaskCreatedResp> {
+    return this.post('/api/v1/mcp/install/github', { source });
+  }
+
+  public installMCPServerFromSSE(
+    source: object,
+  ): Promise<AsyncTaskCreatedResp> {
+    return this.post('/api/v1/mcp/servers', { source });
   }
 
   // ============ System API ============
